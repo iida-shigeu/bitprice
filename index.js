@@ -12,14 +12,38 @@ var headers = {
 (function() {
 
 
-	var method = process.argv[2] || 'list';
-	if ('LIST' === method.toUpperCase()) {
+	var method = process.argv[2] || '';
+	if (method && isNumber(method)) {
+		Calc(method);
+	} else if ('LIST' === method.toUpperCase()) {
 		List();
 	} else {
 		Rate();
 	}
 	
 })();
+
+function isNumber(x){ 
+    if( typeof(x) != 'number' && typeof(x) != 'string' )
+        return false;
+    else 
+        return (x == parseFloat(x) && isFinite(x));
+}
+
+function Calc(target) {
+
+	GetBitPrice(function(err, bit) {
+		if (err) {
+			console.log(err);
+			return
+		}
+
+		console.log("---------------");
+		console.log("" + (target * bit) + "円");
+		console.log("BTC/JPY: " + bit + "円");
+		console.log("---------------");
+	});
+}
 
 function List() {
 
