@@ -2,30 +2,39 @@
 
 'use strict';
 
+var async = require('neo-async');
+var _ = require('lodash');
 var request = require('request');
 var headers = {
   'Content-Type':'application/json'
 };
 
 (function() {
-	var target = process.argv[2] && process.argv[2].toUpperCase() || null;
+
+	var targets = [];
+	_.forEach(process.argv, function(value, key) {
+		if (key >= 2) {
+			targets.push(value.toUpperCase());
+		}
+	});
+
 	GetBitPrice(function(err, bit) {
 		if (err) {
 			console.log(err);
 			return
 		}
-		GetBitRate(target, function(err, rate) {
+		GetBitRate(targets, function(err, rates) {
 			if (err) {
 				console.log(err);
 				return;
 			}
 			console.log("---------------");
 			console.log("BTC/JPY: " + bit + "円");
-			if (rate) {
-				console.log();
-				console.log("BTC/" + target + ": " + rate);
-				console.log(target + "/JPY: " + (rate * bit) + " 円");
-			}
+			_.forEach(rates || [], function(e) {
+				console.log("---------------");
+				console.log("BTC/" + e.target + ": " + e.rate);
+				console.log(e.target + "/JPY: " + (e.rate * bit) + " 円");
+			});
 			console.log("---------------");
 		});
 	});
@@ -49,8 +58,8 @@ function GetBitPrice(callback) {
 	});
 }
 
-function GetBitRate(target, callback) {
-	if (!target) {
+function GetBitRate(targets, callback) {
+	if (!targets || targets.length === 0) {
 		return callback();
 	}
 	var opts = {
@@ -63,8 +72,17 @@ function GetBitRate(target, callback) {
 		if (err) {
 			return callback(err);
 		}
-		var b = body && body['BTC_' + target] || {};
-		var lowest = b['lowestAsk'] || null;
-		callback(null, lowest);
+		var results = [];
+		_.forEach(targets, function(target) {
+			var b = body && body['BTC_' + target] || {};
+			var lowest = b['lowestAsk'] || null;
+			if (lowest) {
+				results.push({
+					target: target,
+					rate: lowest
+				});
+			}
+		});
+		callback(null, results);
 	});
 };
