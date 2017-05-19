@@ -11,6 +11,48 @@ var headers = {
 
 (function() {
 
+
+	var method = process.argv[2] || 'list';
+	if ('LIST' === method.toUpperCase()) {
+		List();
+	} else {
+		Rate();
+	}
+	
+})();
+
+function List() {
+
+	GetBitPrice(function(err, bit) {
+		if (err) {
+			console.log(err);
+			return
+		}
+		GetBitRate(false, function(err, body) {
+			if (err) {
+				console.log(err);
+				return;
+			}
+
+			var coins = [];
+			_.forEach(body, function(value, key) {
+				if (_.includes(key, "BTC_")) {
+					value['name'] = _.trim(key,'BTC_');
+					coins.push(value);
+				}
+			});
+			coins = _.sortBy(coins, function(c) { return c.lowestAsk });
+
+			console.log("---------------");
+			_.forEach(coins, function(c) {
+				console.log(c.name + ": " + (c.lowestAsk * bit) + " 円");
+			});
+			console.log("---------------");
+		});
+	});
+}
+
+function Rate() {
 	var targets = [];
 	_.forEach(process.argv, function(value, key) {
 		if (key >= 2) {
@@ -23,11 +65,24 @@ var headers = {
 			console.log(err);
 			return
 		}
-		GetBitRate(targets, function(err, rates) {
+		GetBitRate(targets.length === 0, function(err, body) {
 			if (err) {
 				console.log(err);
 				return;
 			}
+
+			var rates = [];
+			_.forEach(targets, function(target) {
+				var b = body && body['BTC_' + target] || {};
+				var lowest = b['lowestAsk'] || null;
+				if (lowest) {
+					rates.push({
+						target: target,
+						rate: lowest
+					});
+				}
+			});
+
 			console.log("---------------");
 			console.log("BTC/JPY: " + bit + "円");
 			_.forEach(rates || [], function(e) {
@@ -38,8 +93,7 @@ var headers = {
 			console.log("---------------");
 		});
 	});
-	
-})();
+}
 
 
 function GetBitPrice(callback) {
@@ -58,8 +112,8 @@ function GetBitPrice(callback) {
 	});
 }
 
-function GetBitRate(targets, callback) {
-	if (!targets || targets.length === 0) {
+function GetBitRate(skip, callback) {
+	if (skip) {
 		return callback();
 	}
 	var opts = {
@@ -72,17 +126,6 @@ function GetBitRate(targets, callback) {
 		if (err) {
 			return callback(err);
 		}
-		var results = [];
-		_.forEach(targets, function(target) {
-			var b = body && body['BTC_' + target] || {};
-			var lowest = b['lowestAsk'] || null;
-			if (lowest) {
-				results.push({
-					target: target,
-					rate: lowest
-				});
-			}
-		});
-		callback(null, results);
+		callback(null, body);
 	});
 };
